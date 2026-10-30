@@ -1,0 +1,151 @@
+<!doctype html>
+<!--
+  NEW TRANSMISSION HELPER (local only, not published)
+  Double-click this file to open it in your browser. Fill in the boxes and it gives you:
+    1. the new log page (Download button -> move the file into the log/ folder)
+    2. one line to paste at the TOP of the TRANSMISSIONS list in index.html
+    3. one line to paste into the previous newest log page, so its NEXT link points at the new one
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New transmission — Armament tools</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen&amp;family=VT323&amp;display=swap">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  /* tool-only styles; this page is never published */
+  form { display: grid; gap: 14px; }
+  label { display: flex; flex-direction: column; gap: 4px; font-family: var(--pixel); font-size: 10px; letter-spacing: 2px; color: var(--cyan); }
+  input, textarea, select { font: 20px var(--mono); background: #04050a; color: var(--ink); border: 1px solid var(--line); padding: 8px 10px; }
+  textarea { min-height: 160px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .out { display: flex; flex-direction: column; gap: 8px; }
+  .out textarea { min-height: 90px; font-size: 16px; }
+  button { font: 12px var(--pixel); letter-spacing: 2px; min-height: 44px; padding: 0 18px; background: var(--gold); color: #1a1200; border: 0; cursor: pointer; justify-self: start; }
+  button.ghost { background: transparent; color: var(--cyan); border: 2px solid var(--cyan); }
+  .note { font-size: 18px; color: var(--ink-soft); margin: 0; }
+  @media (max-width: 640px) { .two { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main class="page">
+  <p class="label">TOOLS <span class="sub">// new transmission</span></p>
+  <h1>Write a dev log entry</h1>
+  <form id="f" autocomplete="off">
+    <div class="two">
+      <label>DATE<input id="date" type="date" required></label>
+      <label>TAG (e.g. SHIPS, VENUS, UI)<input id="tag" required></label>
+    </div>
+    <label>TITLE<input id="title" required></label>
+    <label>ONE-LINE SUMMARY (shows on the front page)<input id="line" required></label>
+    <label>ENTRY (blank line = new paragraph)<textarea id="entry" required></textarea></label>
+    <fieldset class="holo c-gold" style="padding:16px;display:grid;gap:14px">
+      <legend class="label gold">CURRENT NEWEST TRANSMISSION</legend>
+      <p class="note" id="auto">Copy these from the first entry of the TRANSMISSIONS list in index.html.</p>
+      <div class="two">
+        <label>ITS FILE NAME (e.g. 2026-10-27-living-ship-lines.html)<input id="pfile"></label>
+        <label>ITS TITLE<input id="ptitle"></label>
+      </div>
+    </fieldset>
+  </form>
+
+  <div class="out">
+    <h2>1 · The new page</h2>
+    <p class="note">Save it into the <b>log/</b> folder as <b id="fname">…</b></p>
+    <button type="button" id="dl">Download page</button>
+  </div>
+  <div class="out">
+    <h2>2 · Paste at the top of the list in index.html</h2>
+    <p class="note">Right under the line <code>&lt;ol class="log-list" reversed&gt;</code></p>
+    <textarea id="o2" readonly></textarea><button type="button" class="ghost" data-copy="o2">Copy</button>
+  </div>
+  <div class="out">
+    <h2>3 · In the old newest page, replace <code>&lt;div class="next"&gt;&lt;/div&gt;</code> with</h2>
+    <textarea id="o3" readonly></textarea><button type="button" class="ghost" data-copy="o3">Copy</button>
+  </div>
+</main>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  $('date').value = new Date().toISOString().slice(0, 10);
+
+  // When the site is served (not opened as a file), fill in the newest entry automatically.
+  fetch('../index.html').then(function (r) { return r.text(); }).then(function (t) {
+    var doc = new DOMParser().parseFromString(t, 'text/html');
+    var a = doc.querySelector('.log-list a');
+    if (!a) return;
+    $('pfile').value = a.getAttribute('href').replace(/^log\//, '');
+    $('ptitle').value = a.querySelector('.t').textContent;
+    $('auto').textContent = 'Filled in from index.html.';
+    update();
+  }).catch(function () {});
+
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function slug(s) {
+    return s.toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'entry';
+  }
+  function dot(d) { return d.replace(/-/g, '.'); }
+
+  function page(v) {
+    var paras = v.entry.split(/\n\s*\n/).map(function (p) { return p.trim(); }).filter(Boolean)
+      .map(function (p) { return '    <p class="body">' + esc(p).replace(/\n/g, '<br>') + '</p>'; }).join('\n');
+    var prev = v.pfile ? '<a href="' + esc(v.pfile) + '" rel="prev"><small>PREV · ' + dot(v.pfile.slice(0, 10)) + '</small>' + esc(v.ptitle) + '</a>' : '';
+    var links = [['dossier', 'Dossier'], ['systems', 'Systems'], ['feed', 'Feed'], ['transmissions', 'Transmissions'], ['directives', 'Directives'], ['contractors', 'Credits']]
+      .map(function (l) { return '<li><a href="../index.html#' + l[0] + '">' + l[1] + '</a></li>'; }).join('');
+    return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
+      '<title>' + esc(v.title) + ' — Armament transmission ' + v.date + '</title>\n' +
+      '<meta name="description" content="' + esc(v.line) + '">\n<meta name="theme-color" content="#06070d">\n' +
+      '<link rel="icon" type="image/png" href="../img/emblem.png">\n' +
+      '<link rel="preconnect" href="https://fonts.googleapis.com">\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n' +
+      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&amp;family=VT323&amp;display=swap">\n' +
+      '<link rel="stylesheet" href="../css/style.css">\n</head>\n<body>\n<header class="nav">\n' +
+      '  <a class="brand" href="../index.html"><span class="led" aria-hidden="true"></span><span class="name">ARMAMENT</span><span class="where">// public terminal</span></a>\n' +
+      '  <nav aria-label="Sections"><ul>' + links + '</ul></nav>\n</header>\n<main class="page">\n' +
+      '  <p class="label">TRANSMISSIONS <span class="sub">// dev log</span></p>\n  <article class="holo entry">\n' +
+      '    <div class="meta"><time datetime="' + v.date + '">' + dot(v.date) + '</time><span class="tag">' + esc(v.tag) + '</span></div>\n' +
+      '    <h1>' + esc(v.title) + '</h1>\n    <p class="lede">' + esc(v.line) + '</p>\n' + paras + '\n  </article>\n' +
+      '  <nav class="pager" aria-label="Transmissions">\n    <div class="prev">' + prev + '</div>\n' +
+      '    <a class="home" href="../index.html#transmissions">Back to the terminal</a>\n    <div class="next"></div>\n  </nav>\n</main>\n' +
+      '<footer id="footer">\n  <div class="sig">ARMAMENT · ALPHA_0.0.0 · MADE WITH GODOT 4.7 · © 2026 Aurora</div>\n' +
+      '  <nav aria-label="Footer"><a href="../credits.html">credits</a><a href="../press.html">press</a></nav>\n' +
+      '</footer>\n</body>\n</html>\n';
+  }
+
+  var current = null;
+  function update() {
+    var v = {
+      date: $('date').value, tag: $('tag').value.trim().toUpperCase(), title: $('title').value.trim(),
+      line: $('line').value.trim(), entry: $('entry').value, pfile: $('pfile').value.trim(), ptitle: $('ptitle').value.trim()
+    };
+    var file = v.date + '-' + slug(v.title) + '.html';
+    $('fname').textContent = file;
+    $('o2').value = '    <li><a href="log/' + file + '"><span class="d">' + dot(v.date) + '</span><span><span class="t">' + esc(v.title) +
+      '</span><span class="l">' + esc(v.line) + '</span></span><span class="tag">' + esc(v.tag) + '</span></a></li>';
+    $('o3').value = '<div class="next"><a href="' + file + '" rel="next"><small>NEXT · ' + dot(v.date) + '</small>' + esc(v.title) + '</a></div>';
+    current = { file: file, html: page(v) };
+  }
+  $('f').addEventListener('input', update);
+  update();
+
+  $('dl').addEventListener('click', function () {
+    update();
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([current.html], { type: 'text/html' }));
+    a.download = current.file;
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+  document.querySelectorAll('[data-copy]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var t = $(b.getAttribute('data-copy'));
+      t.select();
+      (navigator.clipboard ? navigator.clipboard.writeText(t.value) : Promise.reject()).catch(function () { document.execCommand('copy'); });
+      b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1200);
+    });
+  });
+})();
+</script>
+</body>
+</html>
