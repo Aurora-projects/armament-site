@@ -34,3 +34,32 @@ jobs:
           path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # Keeps the public history short: after a deploy, delete every older run and
+  # every inactive deployment record. The live site is not affected.
+  cleanup:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      deployments: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Delete older workflow runs
+        run: |
+          gh api --paginate "repos/$REPO/actions/runs?per_page=100" --jq '.workflow_runs[].id' |
+            while read -r id; do
+              [ "$id" = "${{ github.run_id }}" ] && continue
+              gh api -X DELETE "repos/$REPO/actions/runs/$id" || true
+            done
+      - name: Delete inactive deployments
+        run: |
+          active=$(gh api "repos/$REPO/deployments?environment=github-pages&per_page=1" --jq '.[0].id')
+          gh api --paginate "repos/$REPO/deployments?per_page=100" --jq '.[].id' |
+            while read -r id; do
+              [ "$id" = "$active" ] && continue
+              gh api -X POST "repos/$REPO/deployments/$id/statuses" -f state=inactive >/dev/null || true
+              gh api -X DELETE "repos/$REPO/deployments/$id" || true
+            done
