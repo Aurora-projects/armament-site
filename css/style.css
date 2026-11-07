@@ -334,4 +334,5 @@ details[open] summary { margin-bottom: 12px; }
 /* small helpers for sub pages */
 .entry { padding: 24px; display: flex; flex-direction: column; gap: 14px; }
 .cam.static { position: static; }
+.entry .entry-shot { width: 100%; }
 .credits-grid.single { grid-template-columns: 1fr; }
